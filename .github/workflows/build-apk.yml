@@ -63,23 +63,24 @@ jobs:
     - name: Add Android platform
       run: npx cap add android
 
-    - name: Add Camera permission to AndroidManifest.xml
+    - name: Add Camera permissions to AndroidManifest.xml
       run: |
-        # نضيف إذن الكاميرا والتخزين
         sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/a \ \ \ \ <uses-permission android:name="android.permission.CAMERA" />' android/app/src/main/AndroidManifest.xml
         sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/a \ \ \ \ <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />' android/app/src/main/AndroidManifest.xml
         sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/a \ \ \ \ <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />' android/app/src/main/AndroidManifest.xml
-        echo "=== AndroidManifest.xml بعد الإضافة ==="
-        cat android/app/src/main/AndroidManifest.xml
+        # إضافة خاصية extractNativeLibs لتوافق أندرويد 11
+        sed -i '/<application/a\ \ \ \ \ \ \ \ android:extractNativeLibs="true"' android/app/src/main/AndroidManifest.xml
 
     - name: Upgrade Gradle to version 8.7
       run: |
         sed -i 's/gradle-8.2.1-all.zip/gradle-8.7-bin.zip/g' android/gradle/wrapper/gradle-wrapper.properties
 
-    - name: Update compileSdk and targetSdk to 35
+    - name: Update compileSdk and targetSdk to 35 and set minSdk to 23
       run: |
         sed -i 's/compileSdkVersion [0-9]\+/compileSdkVersion 35/g' android/app/build.gradle
         sed -i 's/targetSdkVersion [0-9]\+/targetSdkVersion 35/g' android/app/build.gradle
+        # إضافة minSdk 23 عشان الكاميرا تشتغل صح
+        sed -i '/defaultConfig {/a \ \ \ \ \ \ \ \ minSdkVersion 23' android/app/build.gradle
 
     - name: Sync Capacitor
       run: npx cap sync android
@@ -90,7 +91,7 @@ jobs:
     - name: Clean FULL Gradle cache
       run: rm -rf ~/.gradle/caches/
 
-    - name: Build Release APK (unsigned) with no daemon
+    - name: Build Release APK (unsigned)
       run: |
         cd android
         chmod +x gradlew
@@ -101,11 +102,26 @@ jobs:
         mkdir -p ~/.android
         keytool -genkey -v -keystore ~/.android/debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug, O=Android, C=US"
 
-    - name: Sign APK with Debug Keystore
+    - name: Install Android SDK build-tools (for apksigner)
       run: |
+        sudo apt-get update
+        sudo apt-get install -y android-sdk-build-tools
+
+    - name: Sign APK with apksigner (V1 + V2)
+      run: |
+        # نستخدم apksigner عشان نوقع بـ V1 و V2 معاً
         cd android/app/build/outputs/apk/release
-        jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 -keystore ~/.android/debug.keystore -storepass android -keypass android app-release-unsigned.apk androiddebugkey
-        mv app-release-unsigned.apk optical-transfer.apk
+        cp app-release-unsigned.apk app-unsigned.apk
+        # نبحث عن مسار apksigner
+        APKSIGNER=$(find /usr -name "apksigner" 2>/dev/null | head -n 1)
+        if [ -z "$APKSIGNER" ]; then
+          echo "apksigner not found, falling back to jarsigner"
+          jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 -keystore ~/.android/debug.keystore -storepass android -keypass android app-unsigned.apk androiddebugkey
+          mv app-unsigned.apk optical-transfer.apk
+        else
+          # توقيع بـ V1 و V2
+          $APKSIGNER sign --ks ~/.android/debug.keystore --ks-pass pass:android --key-pass pass:android --v1-signing-enabled true --v2-signing-enabled true --out optical-transfer.apk app-unsigned.apk
+        fi
 
     - name: Upload APK as Artifact
       uses: actions/upload-artifact@v4
