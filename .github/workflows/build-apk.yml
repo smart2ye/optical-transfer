@@ -51,8 +51,8 @@ jobs:
     - name: Create package.json
       run: npm init -y
 
-    - name: Install Capacitor official plugins
-      run: npm install @capacitor/cli@latest @capacitor/core@latest @capacitor/android@latest @capacitor/document-picker @capacitor/filesystem --legacy-peer-deps
+    - name: Install Capacitor and community file picker
+      run: npm install @capacitor/cli@latest @capacitor/core@latest @capacitor/android@latest @capacitor/filesystem @capacitor-community/file-picker --legacy-peer-deps
 
     - name: Initialize Capacitor
       run: npx cap init "الناقل البصري" "com.optical.transfer" --web-dir=www
@@ -63,12 +63,11 @@ jobs:
     - name: Add Android platform
       run: npx cap add android
 
-    - name: Add Camera and Storage permissions to AndroidManifest.xml
+    - name: Add Camera permissions to AndroidManifest.xml
       run: |
         sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/a \ \ \ \ <uses-permission android:name="android.permission.CAMERA" />' android/app/src/main/AndroidManifest.xml
         sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/a \ \ \ \ <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />' android/app/src/main/AndroidManifest.xml
         sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/a \ \ \ \ <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />' android/app/src/main/AndroidManifest.xml
-        # إضافة ملفات Android 11+
         sed -i '/<application/a\ \ \ \ \ \ \ \ android:requestLegacyExternalStorage="true"' android/app/src/main/AndroidManifest.xml
 
     - name: Upgrade Gradle to version 8.7

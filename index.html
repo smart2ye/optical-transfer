@@ -90,7 +90,7 @@
     </div>
 </div>
 <script>
-// ======== دالة اختيار الملف (تدعم المتصفح و Capacitor رسمياً) ========
+// ======== دالة اختيار الملف (تدعم المتصفح و Capacitor مع المجتمعي) ========
 function pickFile() {
     // الحالة الأولى: متصفح عادي (كروم، فايرفوكس)
     if (!window.Capacitor || !window.Capacitor.isNative) {
@@ -98,31 +98,39 @@ function pickFile() {
         return;
     }
 
-    // الحالة الثانية: تطبيق Capacitor الأصلي (APK)
-    const { DocumentPicker } = Capacitor.Plugins;
-    DocumentPicker.pick({ types: ['*/*'] })
-        .then(result => {
-            if (result.files && result.files.length > 0) {
-                const file = result.files[0];
-                // file.data هي الـ Base64 للملف، file.name هو اسمه
-                const byteString = atob(file.data);
-                const ab = new ArrayBuffer(byteString.length);
-                const ia = new Uint8Array(ab);
-                for (let i = 0; i < byteString.length; i++) {
-                    ia[i] = byteString.charCodeAt(i);
+    // الحالة الثانية: تطبيق Capacitor الأصلي (APK) - نستخدم المجتمعي
+    if (window.Capacitor && window.Capacitor.isNative) {
+        // نحاول نستدعي المجتمعي
+        const { FilePicker } = Capacitor.Plugins;
+        if (FilePicker) {
+            FilePicker.pickFiles({
+                limit: 1,
+                types: ['*/*']
+            }).then(result => {
+                if (result && result.files && result.files.length > 0) {
+                    const file = result.files[0];
+                    // file.data هي الـ Base64 للملف
+                    const byteString = atob(file.data);
+                    const ab = new ArrayBuffer(byteString.length);
+                    const ia = new Uint8Array(ab);
+                    for (let i = 0; i < byteString.length; i++) {
+                        ia[i] = byteString.charCodeAt(i);
+                    }
+                    const blob = new Blob([ab], { type: file.mimeType || 'application/octet-stream' });
+                    const selectedFile = new File([blob], file.name, { type: file.mimeType || 'application/octet-stream' });
+                    handleFileSelect({ target: { files: [selectedFile] } });
                 }
-                const blob = new Blob([ab], { type: file.mimeType || 'application/octet-stream' });
-                const selectedFile = new File([blob], file.name, { type: file.mimeType || 'application/octet-stream' });
-                // نمرر الملف لنفس دالة المعالجة القديمة
-                handleFileSelect({ target: { files: [selectedFile] } });
-            }
-        })
-        .catch(err => {
-            console.log('ألغى المستخدم اختيار الملف', err);
-        });
+            }).catch(err => {
+                console.log('ألغى المستخدم اختيار الملف', err);
+            });
+        } else {
+            // لو المجتمعي مش موجود، نستخدم العادي
+            document.getElementById('fileInput').click();
+        }
+    }
 }
 
-// دالة معالجة الملف المختار (من input العادي أو من Capacitor)
+// دالة معالجة الملف المختار
 function handleFileSelect(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -132,10 +140,9 @@ function handleFileSelect(e) {
     document.getElementById('senderStatus').textContent = '✅ جاهز للبث';
 }
 
-// ربط الـ input العادي (للمتصفحات)
 document.getElementById('fileInput').addEventListener('change', handleFileSelect);
 
-// ======== باقي الكود (نفسه القديم، شغال 100%) ========
+// ======== باقي الكود (نفسه القديم) ========
 const STATE={file:null,chunks:[],totalChunks:0,currentIndex:0,isSending:false,isPaused:false,timer:null,receivedChunks:{},receivedCount:0,totalToReceive:0,fileMetadata:null};
 function prepareFileForSending(file){const reader=new FileReader();reader.onload=function(ev){const rawData=new Uint8Array(ev.target.result);let base64=btoa(String.fromCharCode(...rawData));const meta=JSON.stringify({name:file.name,type:file.type,size:file.size});const CHUNK_SIZE=1800;const chunks=[];chunks.push(meta);for(let i=0;i<base64.length;i+=CHUNK_SIZE){chunks.push(base64.slice(i,i+CHUNK_SIZE));}
 STATE.chunks=chunks;STATE.totalChunks=chunks.length;STATE.currentIndex=0;document.getElementById('chunkStatus').textContent='0 / '+STATE.totalChunks;document.getElementById('progressBar').max=STATE.totalChunks;document.getElementById('progressBar').value=0;document.getElementById('senderStatus').textContent='📦 '+STATE.totalChunks+' قطعة جاهزة';if(chunks.length>0)generateQR(chunks[0],0);};reader.readAsArrayBuffer(file);}
