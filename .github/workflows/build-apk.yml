@@ -63,20 +63,24 @@ jobs:
     - name: Add Android platform
       run: npx cap add android
 
+    - name: Upgrade Gradle to version 8.7 (to avoid bcprov conflict)
+      run: |
+        sed -i 's/gradle-8.2.1-all.zip/gradle-8.7-bin.zip/g' android/gradle/wrapper/gradle-wrapper.properties
+
     - name: Sync Capacitor
       run: npx cap sync android
 
     - name: Increase Gradle memory
       run: echo "org.gradle.jvmargs=-Xmx2048m" >> android/gradle.properties
 
-    - name: Clean Gradle cache
-      run: rm -rf ~/.gradle/caches/jars-9/
+    - name: Clean FULL Gradle cache to remove corrupted jar
+      run: rm -rf ~/.gradle/caches/
 
-    - name: Build Release APK (unsigned)
+    - name: Build Release APK (unsigned) with no daemon
       run: |
         cd android
         chmod +x gradlew
-        ./gradlew assembleRelease
+        ./gradlew assembleRelease --no-daemon
 
     - name: Generate Debug Keystore
       run: |
