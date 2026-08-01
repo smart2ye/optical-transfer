@@ -22,6 +22,7 @@
         .panel.active{display:flex}
         .drop-zone{border:2px dashed #2a3a55;padding:30px 10px;border-radius:20px;text-align:center;color:#7b8aa6;cursor:pointer;transition:.3s;background:#0f1625}
         .drop-zone:hover{border-color:#58c4ff;background:#182133}
+        #fileInput{display:none}
         .qr-box{background:#fff;padding:16px;border-radius:20px;display:flex;justify-content:center;align-items:center;min-height:220px;background:#0f1625;border:1px solid #253040}
         #qrcode{width:200px;height:200px;display:flex;justify-content:center;align-items:center}
         #qrcode img,#qrcode canvas{width:100%!important;height:100%!important;border-radius:12px}
@@ -44,7 +45,6 @@
         .btn-download{background:#10b981;color:#fff;border:none;padding:12px;border-radius:40px;font-weight:bold;width:100%;cursor:pointer}
         .btn-download:hover{background:#34d399}
         .hidden{display:none!important}
-        #fileInput{display:none}
     </style>
 </head>
 <body>
@@ -90,17 +90,8 @@
     </div>
 </div>
 <script>
-// ======== الكود الأساسي (نفسه القديم) ========
-document.getElementById('fileInput').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    STATE.file = file;
-    document.getElementById('fileName').textContent = '📄 '+file.name+' ('+(file.size/1024).toFixed(1)+' كيلوبايت)';
-    prepareFileForSending(file);
-    document.getElementById('senderStatus').textContent = '✅ جاهز للبث';
-});
-
 const STATE={file:null,chunks:[],totalChunks:0,currentIndex:0,isSending:false,isPaused:false,timer:null,receivedChunks:{},receivedCount:0,totalToReceive:0,fileMetadata:null};
+document.getElementById('fileInput').addEventListener('change',function(e){const file=e.target.files[0];if(!file)return;STATE.file=file;document.getElementById('fileName').textContent='📄 '+file.name+' ('+(file.size/1024).toFixed(1)+' كيلوبايت)';prepareFileForSending(file);document.getElementById('senderStatus').textContent='✅ جاهز للبث';});
 function prepareFileForSending(file){const reader=new FileReader();reader.onload=function(ev){const rawData=new Uint8Array(ev.target.result);let base64=btoa(String.fromCharCode(...rawData));const meta=JSON.stringify({name:file.name,type:file.type,size:file.size});const CHUNK_SIZE=1800;const chunks=[];chunks.push(meta);for(let i=0;i<base64.length;i+=CHUNK_SIZE){chunks.push(base64.slice(i,i+CHUNK_SIZE));}
 STATE.chunks=chunks;STATE.totalChunks=chunks.length;STATE.currentIndex=0;document.getElementById('chunkStatus').textContent='0 / '+STATE.totalChunks;document.getElementById('progressBar').max=STATE.totalChunks;document.getElementById('progressBar').value=0;document.getElementById('senderStatus').textContent='📦 '+STATE.totalChunks+' قطعة جاهزة';if(chunks.length>0)generateQR(chunks[0],0);};reader.readAsArrayBuffer(file);}
 let qrInstance=null;
