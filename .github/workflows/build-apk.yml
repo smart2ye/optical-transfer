@@ -24,10 +24,11 @@ jobs:
         cp index.html www/
         cp manifest.json www/
 
-    - name: Setup Capacitor project
-      run: |
-        npm init -y
-        npm install @capacitor/core @capacitor/android
+    - name: Create package.json
+      run: npm init -y
+
+    - name: Install Capacitor
+      run: npm install @capacitor/core @capacitor/android --legacy-peer-deps
 
     - name: Initialize Capacitor
       run: npx cap init "الناقل البصري" "com.optical.transfer" --web-dir=www
@@ -38,13 +39,16 @@ jobs:
     - name: Sync Capacitor
       run: npx cap sync android
 
+    - name: Increase Gradle memory
+      run: echo "org.gradle.jvmargs=-Xmx2048m" >> android/gradle.properties
+
     - name: Build Release APK (unsigned)
       run: |
         cd android
         chmod +x gradlew
         ./gradlew assembleRelease
 
-    - name: Generate Debug Keystore (للتوقيع)
+    - name: Generate Debug Keystore
       run: |
         mkdir -p ~/.android
         keytool -genkey -v -keystore ~/.android/debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug, O=Android, C=US"
