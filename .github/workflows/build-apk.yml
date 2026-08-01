@@ -51,8 +51,8 @@ jobs:
     - name: Create package.json
       run: npm init -y
 
-    - name: Install Capacitor and community file picker
-      run: npm install @capacitor/cli@latest @capacitor/core@latest @capacitor/android@latest @capacitor/filesystem @capacitor-community/file-picker --legacy-peer-deps
+    - name: Install Capacitor (only official)
+      run: npm install @capacitor/cli@latest @capacitor/core@latest @capacitor/android@latest --legacy-peer-deps
 
     - name: Initialize Capacitor
       run: npx cap init "الناقل البصري" "com.optical.transfer" --web-dir=www
@@ -63,18 +63,34 @@ jobs:
     - name: Add Android platform
       run: npx cap add android
 
-    - name: Add Camera permissions to AndroidManifest.xml
+    - name: Fix AndroidManifest.xml for file picker and camera
       run: |
+        # إضافة الأذونات المطلوبة
         sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/a \ \ \ \ <uses-permission android:name="android.permission.CAMERA" />' android/app/src/main/AndroidManifest.xml
         sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/a \ \ \ \ <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />' android/app/src/main/AndroidManifest.xml
         sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/a \ \ \ \ <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />' android/app/src/main/AndroidManifest.xml
+        # إضافة خاصية تسمح باختيار الملفات حتى على Android 11+
         sed -i '/<application/a\ \ \ \ \ \ \ \ android:requestLegacyExternalStorage="true"' android/app/src/main/AndroidManifest.xml
+        # إضافة provider للملفات (لتوافق Android 11+)
+        sed -i '/<application/a\ \ \ \ \ \ \ \ <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.fileprovider" android:exported="false" android:grantUriPermissions="true"><meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" /></provider>' android/app/src/main/AndroidManifest.xml
+
+    - name: Create file_paths.xml for FileProvider
+      run: |
+        mkdir -p android/app/src/main/res/xml
+        cat > android/app/src/main/res/xml/file_paths.xml << 'FPEOF'
+        <?xml version="1.0" encoding="utf-8"?>
+        <paths>
+            <external-path name="external_files" path="." />
+            <cache-path name="cache_files" path="." />
+            <files-path name="files" path="." />
+        </paths>
+        FPEOF
 
     - name: Upgrade Gradle to version 8.7
       run: |
         sed -i 's/gradle-8.2.1-all.zip/gradle-8.7-bin.zip/g' android/gradle/wrapper/gradle-wrapper.properties
 
-    - name: Update compileSdk and targetSdk to 35 and set minSdk to 23
+    - name: Set compileSdk and targetSdk to 35 and minSdk to 23
       run: |
         sed -i 's/compileSdkVersion [0-9]\+/compileSdkVersion 35/g' android/app/build.gradle
         sed -i 's/targetSdkVersion [0-9]\+/targetSdkVersion 35/g' android/app/build.gradle
