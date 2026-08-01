@@ -24,34 +24,16 @@ jobs:
       with:
         node-version: '22'
 
-    - name: Prepare www directory and create manifest.json
+    - name: Prepare www directory
       run: |
         mkdir -p www
         cp index.html www/
-        cat > www/manifest.json << 'INNEREOF'
-        {
-          "name": "الناقل البصري",
-          "short_name": "ناقل بصري",
-          "description": "انقل الملفات بالضوء من غير نت",
-          "start_url": "index.html",
-          "display": "fullscreen",
-          "orientation": "portrait",
-          "background_color": "#0b0f19",
-          "theme_color": "#0b0f19",
-          "icons": [
-            {
-              "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E📡%3C/text%3E%3C/svg%3E",
-              "sizes": "192x192",
-              "type": "image/svg+xml"
-            }
-          ]
-        }
-        INNEREOF
+        cp manifest.json www/
 
     - name: Create package.json
       run: npm init -y
 
-    - name: Install Capacitor (only official)
+    - name: Install Capacitor (official only)
       run: npm install @capacitor/cli@latest @capacitor/core@latest @capacitor/android@latest --legacy-peer-deps
 
     - name: Initialize Capacitor
@@ -63,83 +45,18 @@ jobs:
     - name: Add Android platform
       run: npx cap add android
 
-    - name: Overwrite AndroidManifest.xml with correct permissions
+    - name: Add necessary permissions to AndroidManifest.xml safely
       run: |
-        cat > android/app/src/main/AndroidManifest.xml << 'MANIFESTEOF'
-        <?xml version="1.0" encoding="utf-8"?>
-        <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-            package="com.optical.transfer">
+        # نضيف الأذونات بعد سطر INTERNET مباشرة (باستخدام sed الآمن)
+        sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/a \ \ \ \ <uses-permission android:name="android.permission.CAMERA" />' android/app/src/main/AndroidManifest.xml
+        sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/a \ \ \ \ <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />' android/app/src/main/AndroidManifest.xml
+        sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/a \ \ \ \ <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />' android/app/src/main/AndroidManifest.xml
 
-            <!-- الأذونات المطلوبة -->
-            <uses-permission android:name="android.permission.INTERNET" />
-            <uses-permission android:name="android.permission.CAMERA" />
-            <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-            <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-            <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+        # نضيف android:requestLegacyExternalStorage="true" داخل application
+        sed -i '/<application/a\ \ \ \ \ \ \ \ android:requestLegacyExternalStorage="true"' android/app/src/main/AndroidManifest.xml
 
-            <!-- دعم الكاميرا -->
-            <uses-feature android:name="android.hardware.camera" android:required="false" />
-            <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
-
-            <application
-                android:allowBackup="true"
-                android:icon="@mipmap/ic_launcher"
-                android:label="@string/app_name"
-                android:roundIcon="@mipmap/ic_launcher_round"
-                android:supportsRtl="true"
-                android:theme="@style/AppTheme"
-                android:requestLegacyExternalStorage="true"
-                android:usesCleartextTraffic="true">
-
-                <activity
-                    android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
-                    android:name="com.getcapacitor.MainActivity"
-                    android:label="@string/app_name"
-                    android:theme="@style/AppTheme.NoActionBar"
-                    android:launchMode="singleTask"
-                    android:exported="true">
-
-                    <intent-filter>
-                        <action android:name="android.intent.action.MAIN" />
-                        <category android:name="android.intent.category.LAUNCHER" />
-                    </intent-filter>
-
-                    <intent-filter>
-                        <action android:name="android.intent.action.VIEW" />
-                        <category android:name="android.intent.category.DEFAULT" />
-                        <category android:name="android.intent.category.BROWSABLE" />
-                        <data android:scheme="@string/custom_url_scheme" />
-                    </intent-filter>
-
-                </activity>
-
-                <!-- FileProvider لدعم اختيار الملفات في Android 11+ -->
-                <provider
-                    android:name="androidx.core.content.FileProvider"
-                    android:authorities="${applicationId}.fileprovider"
-                    android:exported="false"
-                    android:grantUriPermissions="true">
-                    <meta-data
-                        android:name="android.support.FILE_PROVIDER_PATHS"
-                        android:resource="@xml/file_paths" />
-                </provider>
-
-            </application>
-
-        </manifest>
-        MANIFESTEOF
-
-    - name: Create file_paths.xml for FileProvider
-      run: |
-        mkdir -p android/app/src/main/res/xml
-        cat > android/app/src/main/res/xml/file_paths.xml << 'FPEOF'
-        <?xml version="1.0" encoding="utf-8"?>
-        <paths>
-            <external-path name="external_files" path="." />
-            <cache-path name="cache_files" path="." />
-            <files-path name="files" path="." />
-        </paths>
-        FPEOF
+        # نطبع الملف الناتج للتأكد
+        cat android/app/src/main/AndroidManifest.xml
 
     - name: Upgrade Gradle to version 8.7
       run: |
@@ -156,9 +73,6 @@ jobs:
 
     - name: Increase Gradle memory
       run: echo "org.gradle.jvmargs=-Xmx2048m" >> android/gradle.properties
-
-    - name: Clean FULL Gradle cache
-      run: rm -rf ~/.gradle/caches/
 
     - name: Build Release APK (unsigned)
       run: |
