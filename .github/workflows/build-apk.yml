@@ -51,8 +51,8 @@ jobs:
     - name: Create package.json
       run: npm init -y
 
-    - name: Install Capacitor CLI and core
-      run: npm install @capacitor/cli @capacitor/core @capacitor/android --legacy-peer-deps
+    - name: Install Capacitor CLI and core (latest)
+      run: npm install @capacitor/cli@latest @capacitor/core@latest @capacitor/android@latest --legacy-peer-deps
 
     - name: Initialize Capacitor
       run: npx cap init "الناقل البصري" "com.optical.transfer" --web-dir=www
@@ -67,14 +67,12 @@ jobs:
       run: |
         sed -i 's/gradle-8.2.1-all.zip/gradle-8.7-bin.zip/g' android/gradle/wrapper/gradle-wrapper.properties
 
-    - name: Set compileSdk and targetSdk to 35
+    - name: Update compileSdk and targetSdk to 35 (only in app/build.gradle)
       run: |
-        # تعديل build.gradle لرفع SDK إلى 35
-        sed -i 's/compileSdkVersion [0-9]*/compileSdkVersion 35/g' android/app/build.gradle
-        sed -i 's/targetSdkVersion [0-9]*/targetSdkVersion 35/g' android/app/build.gradle
-        # تعديل capacitor.build.gradle إن وجد
-        sed -i 's/compileSdk = [0-9]*/compileSdk = 35/g' android/capacitor.build.gradle || true
-        sed -i 's/targetSdk = [0-9]*/targetSdk = 35/g' android/capacitor.build.gradle || true
+        sed -i 's/compileSdkVersion [0-9]\+/compileSdkVersion 35/g' android/app/build.gradle
+        sed -i 's/targetSdkVersion [0-9]\+/targetSdkVersion 35/g' android/app/build.gradle
+        echo "=== android/app/build.gradle after update ==="
+        cat android/app/build.gradle
 
     - name: Sync Capacitor
       run: npx cap sync android
