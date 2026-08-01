@@ -57,23 +57,17 @@ jobs:
     - name: Initialize Capacitor
       run: npx cap init "الناقل البصري" "com.optical.transfer" --web-dir=www
 
+    - name: Remove old Android folder if exists
+      run: rm -rf android
+
     - name: Add Android platform
       run: npx cap add android
-
-    - name: Force Java 17 in Capacitor build files
-      run: |
-        # نعدل ملف capacitor.build.gradle عشان يشتغل بـ Java 17
-        sed -i 's/JavaVersion.VERSION_21/JavaVersion.VERSION_17/g' android/capacitor.build.gradle
-        sed -i 's/JavaVersion.VERSION_21/JavaVersion.VERSION_17/g' android/app/build.gradle || true
 
     - name: Sync Capacitor
       run: npx cap sync android
 
     - name: Increase Gradle memory
       run: echo "org.gradle.jvmargs=-Xmx2048m" >> android/gradle.properties
-
-    - name: Clean Gradle cache
-      run: rm -rf ~/.gradle/caches/jars-9/
 
     - name: Build Release APK (unsigned)
       run: |
