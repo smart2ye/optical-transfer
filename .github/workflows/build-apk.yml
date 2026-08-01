@@ -51,8 +51,8 @@ jobs:
     - name: Create package.json
       run: npm init -y
 
-    - name: Install Capacitor CLI and core (latest)
-      run: npm install @capacitor/cli@latest @capacitor/core@latest @capacitor/android@latest --legacy-peer-deps
+    - name: Install Capacitor CLI, core, android, and file-picker
+      run: npm install @capacitor/cli@latest @capacitor/core@latest @capacitor/android@latest @capacitor/filesystem @capacitor/file-picker --legacy-peer-deps
 
     - name: Initialize Capacitor
       run: npx cap init "الناقل البصري" "com.optical.transfer" --web-dir=www
@@ -68,8 +68,6 @@ jobs:
         sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/a \ \ \ \ <uses-permission android:name="android.permission.CAMERA" />' android/app/src/main/AndroidManifest.xml
         sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/a \ \ \ \ <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />' android/app/src/main/AndroidManifest.xml
         sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/a \ \ \ \ <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />' android/app/src/main/AndroidManifest.xml
-        # إضافة خاصية extractNativeLibs لتوافق أندرويد 11
-        sed -i '/<application/a\ \ \ \ \ \ \ \ android:extractNativeLibs="true"' android/app/src/main/AndroidManifest.xml
 
     - name: Upgrade Gradle to version 8.7
       run: |
@@ -79,7 +77,6 @@ jobs:
       run: |
         sed -i 's/compileSdkVersion [0-9]\+/compileSdkVersion 35/g' android/app/build.gradle
         sed -i 's/targetSdkVersion [0-9]\+/targetSdkVersion 35/g' android/app/build.gradle
-        # إضافة minSdk 23 عشان الكاميرا تشتغل صح
         sed -i '/defaultConfig {/a \ \ \ \ \ \ \ \ minSdkVersion 23' android/app/build.gradle
 
     - name: Sync Capacitor
@@ -102,24 +99,20 @@ jobs:
         mkdir -p ~/.android
         keytool -genkey -v -keystore ~/.android/debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug, O=Android, C=US"
 
-    - name: Install Android SDK build-tools (for apksigner)
+    - name: Install Android SDK build-tools
       run: |
         sudo apt-get update
         sudo apt-get install -y android-sdk-build-tools
 
     - name: Sign APK with apksigner (V1 + V2)
       run: |
-        # نستخدم apksigner عشان نوقع بـ V1 و V2 معاً
         cd android/app/build/outputs/apk/release
         cp app-release-unsigned.apk app-unsigned.apk
-        # نبحث عن مسار apksigner
         APKSIGNER=$(find /usr -name "apksigner" 2>/dev/null | head -n 1)
         if [ -z "$APKSIGNER" ]; then
-          echo "apksigner not found, falling back to jarsigner"
           jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 -keystore ~/.android/debug.keystore -storepass android -keypass android app-unsigned.apk androiddebugkey
           mv app-unsigned.apk optical-transfer.apk
         else
-          # توقيع بـ V1 و V2
           $APKSIGNER sign --ks ~/.android/debug.keystore --ks-pass pass:android --key-pass pass:android --v1-signing-enabled true --v2-signing-enabled true --out optical-transfer.apk app-unsigned.apk
         fi
 
