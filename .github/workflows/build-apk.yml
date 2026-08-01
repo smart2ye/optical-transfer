@@ -24,11 +24,29 @@ jobs:
       with:
         node-version: '22'
 
-    - name: Prepare www directory
+    - name: Prepare www directory and create manifest.json
       run: |
         mkdir -p www
         cp index.html www/
-        cp manifest.json www/
+        cat > www/manifest.json << 'INNEREOF'
+        {
+          "name": "الناقل البصري",
+          "short_name": "ناقل بصري",
+          "description": "انقل الملفات بالضوء من غير نت",
+          "start_url": "index.html",
+          "display": "fullscreen",
+          "orientation": "portrait",
+          "background_color": "#0b0f19",
+          "theme_color": "#0b0f19",
+          "icons": [
+            {
+              "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E📡%3C/text%3E%3C/svg%3E",
+              "sizes": "192x192",
+              "type": "image/svg+xml"
+            }
+          ]
+        }
+        INNEREOF
 
     - name: Create package.json
       run: npm init -y
@@ -47,16 +65,10 @@ jobs:
 
     - name: Add necessary permissions to AndroidManifest.xml safely
       run: |
-        # نضيف الأذونات بعد سطر INTERNET مباشرة (باستخدام sed الآمن)
         sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/a \ \ \ \ <uses-permission android:name="android.permission.CAMERA" />' android/app/src/main/AndroidManifest.xml
         sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/a \ \ \ \ <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />' android/app/src/main/AndroidManifest.xml
         sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/a \ \ \ \ <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />' android/app/src/main/AndroidManifest.xml
-
-        # نضيف android:requestLegacyExternalStorage="true" داخل application
         sed -i '/<application/a\ \ \ \ \ \ \ \ android:requestLegacyExternalStorage="true"' android/app/src/main/AndroidManifest.xml
-
-        # نطبع الملف الناتج للتأكد
-        cat android/app/src/main/AndroidManifest.xml
 
     - name: Upgrade Gradle to version 8.7
       run: |
