@@ -22,7 +22,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '22'   # تم التحديث من 18 إلى 22
+        node-version: '22'
 
     - name: Prepare www directory and create manifest.json
       run: |
@@ -63,16 +63,23 @@ jobs:
     - name: Add Android platform
       run: npx cap add android
 
+    - name: Add Camera permission to AndroidManifest.xml
+      run: |
+        # نضيف إذن الكاميرا والتخزين
+        sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/a \ \ \ \ <uses-permission android:name="android.permission.CAMERA" />' android/app/src/main/AndroidManifest.xml
+        sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/a \ \ \ \ <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />' android/app/src/main/AndroidManifest.xml
+        sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/a \ \ \ \ <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />' android/app/src/main/AndroidManifest.xml
+        echo "=== AndroidManifest.xml بعد الإضافة ==="
+        cat android/app/src/main/AndroidManifest.xml
+
     - name: Upgrade Gradle to version 8.7
       run: |
         sed -i 's/gradle-8.2.1-all.zip/gradle-8.7-bin.zip/g' android/gradle/wrapper/gradle-wrapper.properties
 
-    - name: Update compileSdk and targetSdk to 35 (only in app/build.gradle)
+    - name: Update compileSdk and targetSdk to 35
       run: |
         sed -i 's/compileSdkVersion [0-9]\+/compileSdkVersion 35/g' android/app/build.gradle
         sed -i 's/targetSdkVersion [0-9]\+/targetSdkVersion 35/g' android/app/build.gradle
-        echo "=== android/app/build.gradle after update ==="
-        cat android/app/build.gradle
 
     - name: Sync Capacitor
       run: npx cap sync android
