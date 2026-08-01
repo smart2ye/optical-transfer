@@ -45,8 +45,8 @@ jobs:
     - name: Create package.json
       run: npm init -y
 
-    - name: Install Capacitor
-      run: npm install @capacitor/core @capacitor/android --legacy-peer-deps
+    - name: Install Capacitor CLI and core
+      run: npm install @capacitor/cli @capacitor/core @capacitor/android --legacy-peer-deps
 
     - name: Initialize Capacitor
       run: npx cap init "الناقل البصري" "com.optical.transfer" --web-dir=www
