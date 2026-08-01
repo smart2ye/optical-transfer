@@ -63,9 +63,18 @@ jobs:
     - name: Add Android platform
       run: npx cap add android
 
-    - name: Upgrade Gradle to version 8.7 (to avoid bcprov conflict)
+    - name: Upgrade Gradle to version 8.7
       run: |
         sed -i 's/gradle-8.2.1-all.zip/gradle-8.7-bin.zip/g' android/gradle/wrapper/gradle-wrapper.properties
+
+    - name: Set compileSdk and targetSdk to 35
+      run: |
+        # تعديل build.gradle لرفع SDK إلى 35
+        sed -i 's/compileSdkVersion [0-9]*/compileSdkVersion 35/g' android/app/build.gradle
+        sed -i 's/targetSdkVersion [0-9]*/targetSdkVersion 35/g' android/app/build.gradle
+        # تعديل capacitor.build.gradle إن وجد
+        sed -i 's/compileSdk = [0-9]*/compileSdk = 35/g' android/capacitor.build.gradle || true
+        sed -i 's/targetSdk = [0-9]*/targetSdk = 35/g' android/capacitor.build.gradle || true
 
     - name: Sync Capacitor
       run: npx cap sync android
@@ -73,7 +82,7 @@ jobs:
     - name: Increase Gradle memory
       run: echo "org.gradle.jvmargs=-Xmx2048m" >> android/gradle.properties
 
-    - name: Clean FULL Gradle cache to remove corrupted jar
+    - name: Clean FULL Gradle cache
       run: rm -rf ~/.gradle/caches/
 
     - name: Build Release APK (unsigned) with no daemon
