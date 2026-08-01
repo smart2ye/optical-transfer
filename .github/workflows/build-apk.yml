@@ -63,16 +63,71 @@ jobs:
     - name: Add Android platform
       run: npx cap add android
 
-    - name: Fix AndroidManifest.xml for file picker and camera
+    - name: Overwrite AndroidManifest.xml with correct permissions
       run: |
-        # إضافة الأذونات المطلوبة
-        sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/a \ \ \ \ <uses-permission android:name="android.permission.CAMERA" />' android/app/src/main/AndroidManifest.xml
-        sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/a \ \ \ \ <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />' android/app/src/main/AndroidManifest.xml
-        sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/a \ \ \ \ <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />' android/app/src/main/AndroidManifest.xml
-        # إضافة خاصية تسمح باختيار الملفات حتى على Android 11+
-        sed -i '/<application/a\ \ \ \ \ \ \ \ android:requestLegacyExternalStorage="true"' android/app/src/main/AndroidManifest.xml
-        # إضافة provider للملفات (لتوافق Android 11+)
-        sed -i '/<application/a\ \ \ \ \ \ \ \ <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.fileprovider" android:exported="false" android:grantUriPermissions="true"><meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" /></provider>' android/app/src/main/AndroidManifest.xml
+        cat > android/app/src/main/AndroidManifest.xml << 'MANIFESTEOF'
+        <?xml version="1.0" encoding="utf-8"?>
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+            package="com.optical.transfer">
+
+            <!-- الأذونات المطلوبة -->
+            <uses-permission android:name="android.permission.INTERNET" />
+            <uses-permission android:name="android.permission.CAMERA" />
+            <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+            <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+            <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+
+            <!-- دعم الكاميرا -->
+            <uses-feature android:name="android.hardware.camera" android:required="false" />
+            <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+
+            <application
+                android:allowBackup="true"
+                android:icon="@mipmap/ic_launcher"
+                android:label="@string/app_name"
+                android:roundIcon="@mipmap/ic_launcher_round"
+                android:supportsRtl="true"
+                android:theme="@style/AppTheme"
+                android:requestLegacyExternalStorage="true"
+                android:usesCleartextTraffic="true">
+
+                <activity
+                    android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
+                    android:name="com.getcapacitor.MainActivity"
+                    android:label="@string/app_name"
+                    android:theme="@style/AppTheme.NoActionBar"
+                    android:launchMode="singleTask"
+                    android:exported="true">
+
+                    <intent-filter>
+                        <action android:name="android.intent.action.MAIN" />
+                        <category android:name="android.intent.category.LAUNCHER" />
+                    </intent-filter>
+
+                    <intent-filter>
+                        <action android:name="android.intent.action.VIEW" />
+                        <category android:name="android.intent.category.DEFAULT" />
+                        <category android:name="android.intent.category.BROWSABLE" />
+                        <data android:scheme="@string/custom_url_scheme" />
+                    </intent-filter>
+
+                </activity>
+
+                <!-- FileProvider لدعم اختيار الملفات في Android 11+ -->
+                <provider
+                    android:name="androidx.core.content.FileProvider"
+                    android:authorities="${applicationId}.fileprovider"
+                    android:exported="false"
+                    android:grantUriPermissions="true">
+                    <meta-data
+                        android:name="android.support.FILE_PROVIDER_PATHS"
+                        android:resource="@xml/file_paths" />
+                </provider>
+
+            </application>
+
+        </manifest>
+        MANIFESTEOF
 
     - name: Create file_paths.xml for FileProvider
       run: |
